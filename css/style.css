@@ -46,15 +46,17 @@ button, input, select, textarea {
 }
 
 /* ===================== HEADER ===================== */
-/* Layout fluido, sem breakpoints fixos em pixels: a marca fica à esquerda,
-   as ações do usuário à direita — ambas numa mesma linha, encolhendo e
-   quebrando texto conforme o espaço disponível. As abas (`.tabs`) têm
-   flex-basis 100%, o que faz o próprio motor de flexbox decidir, em
-   qualquer resolução/zoom, se elas cabem ao lado da marca+ações ou se
-   precisam da própria linha — sem depender de um valor de tela específico
-   que varia de monitor para monitor. Dentro das abas, os botões nunca
-   quebram entre si (nowrap + scroll horizontal), então nunca ficam
-   "espremidos" em duas fileiras dentro do mesmo pill. */
+/* Layout fluido, sem breakpoints fixos em pixels. A marca, as abas e as
+   ações do usuário são 3 itens flex (nessa ordem de prioridade de quebra:
+   marca sempre visível, ações sempre visíveis, abas são o item "de
+   sobra"). Nenhum deles força crescimento artificial (sem flex-grow) —
+   cada um ocupa só o espaço do seu próprio conteúdo. Isso deixa o
+   algoritmo nativo de flex-wrap do navegador decidir, em qualquer
+   resolução/zoom/monitor, se cabem todos numa linha só ou se as abas
+   precisam ir para a linha de baixo — sem um valor de pixel "mágico" e
+   sem esticar o pill das abas quando ele fica sozinho numa linha larga.
+   Dentro das abas, os botões nunca quebram entre si (nowrap + scroll
+   horizontal). */
 .app-header {
   background: linear-gradient(90deg, var(--primary-dark), var(--primary));
   color: #fff;
