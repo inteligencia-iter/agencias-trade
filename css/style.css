@@ -90,9 +90,10 @@ button, input, select, textarea {
 .brand-sub { font-size: 12px; opacity: .85; font-weight: 400; }
 
 .tabs {
-  /* flex-basis 100% garante linha própria sempre que não houver espaço —
-     de forma fluida, em qualquer largura, sem "if width < Xpx". */
-  order: 3; flex: 1 1 100%; min-width: 0;
+  /* Sem flex-grow: o pill nunca estica além do tamanho dos seus próprios
+     botões. flex-shrink:1 + min-width:0 permite encolher (com rolagem
+     interna) só quando realmente não há espaço nem na própria linha. */
+  order: 3; flex: 0 1 auto; min-width: 0;
   display: flex; gap: 4px; flex-wrap: nowrap; background: rgba(255,255,255,.14);
   padding: 4px; border-radius: 999px;
   overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
