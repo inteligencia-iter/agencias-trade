@@ -17,7 +17,7 @@ const STAGE_LABELS = {
   negociacao: 'Em Negociação',
   cad_formulario: 'Cadastro: Preenchimento do Formulário',
   cad_financeira: 'Cadastro: Análise Financeira',
-  cad_juridica: 'Cadastro: Análise Jurídica',
+  cad_juridica: 'Cadastro: Assinatura do Contrato',
   cad_ativacao: 'Cadastro: Ativação da Oferta na Plataforma',
   cad_onboarding: 'Cadastro: Treinamento/On-Boarding',
   cadastrada_sucesso: 'Agência Cadastrada com Sucesso',
