@@ -33,7 +33,6 @@
   <div class="header-right">
     <button id="current-user-badge" class="user-badge" title="Clique para trocar de usuário"></button>
     <span class="sync-status" id="sync-status" title="Status de sincronização">● local</span>
-    <span class="user-badge" id="project-badge" title="Projeto Firebase conectado"></span>
   </div>
 </header>
 
@@ -143,6 +142,14 @@
 
     <div class="leads-list-wrap">
       <table class="leads-table">
+        <colgroup>
+          <col style="width:30px">
+          <col style="width:30%">
+          <col style="width:16%">
+          <col style="width:26%">
+          <col style="width:14%">
+          <col style="width:14%">
+        </colgroup>
         <thead>
           <tr>
             <th></th>
@@ -176,20 +183,31 @@
       <p>Agências com cadastro concluído com sucesso na plataforma.</p>
       <button id="btn-export-cadastradas" class="btn-export" title="Exportar em CSV as agências cadastradas">⬇ Exportar CSV</button>
     </div>
-    <table class="leads-table">
-      <thead>
-        <tr>
-          <th>Agência</th>
-          <th>Município/UF</th>
-          <th>Telefone</th>
-          <th>Responsável</th>
-          <th>Observações</th>
-          <th>Data de Conclusão</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="cadastradas-tbody"></tbody>
-    </table>
+    <div class="table-scroll">
+      <table class="leads-table">
+        <colgroup>
+          <col style="width:22%">
+          <col style="width:13%">
+          <col style="width:13%">
+          <col style="width:17%">
+          <col style="width:23%">
+          <col style="width:15%">
+          <col style="width:90px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Agência</th>
+            <th>Município/UF</th>
+            <th>Telefone</th>
+            <th>Responsável</th>
+            <th>Observações</th>
+            <th>Data de Conclusão</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cadastradas-tbody"></tbody>
+      </table>
+    </div>
   </section>
 
   <!-- ===================== REJEITADAS / SEM RESPOSTA ===================== -->
@@ -198,21 +216,33 @@
       <p>Agências que não responderam ou saíram do funil em algum ponto. Você pode reativar uma agência para reiniciar o follow-up.</p>
       <button id="btn-export-rejeitadas" class="btn-export" title="Exportar em CSV as agências rejeitadas/sem resposta">⬇ Exportar CSV</button>
     </div>
-    <table class="leads-table">
-      <thead>
-        <tr>
-          <th>Agência</th>
-          <th>Município/UF</th>
-          <th>Telefone</th>
-          <th>Etapa em que saiu</th>
-          <th>Motivo</th>
-          <th>Observações</th>
-          <th>Data</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="rejeitadas-tbody"></tbody>
-    </table>
+    <div class="table-scroll">
+      <table class="leads-table">
+        <colgroup>
+          <col style="width:19%">
+          <col style="width:11%">
+          <col style="width:11%">
+          <col style="width:15%">
+          <col style="width:14%">
+          <col style="width:17%">
+          <col style="width:13%">
+          <col style="width:90px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Agência</th>
+            <th>Município/UF</th>
+            <th>Telefone</th>
+            <th>Etapa em que saiu</th>
+            <th>Motivo</th>
+            <th>Observações</th>
+            <th>Data</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rejeitadas-tbody"></tbody>
+      </table>
+    </div>
   </section>
 
 </main>
