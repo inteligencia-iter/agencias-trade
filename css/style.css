@@ -46,25 +46,32 @@ button, input, select, textarea {
 }
 
 /* ===================== HEADER ===================== */
-/* Layout previsível em 3 tiers: (1) tudo em 1 linha quando cabe;
-   (2) marca+ações numa linha e as abas em linha própria (rolável) quando
-   o espaço aperta; (3) empilhado verticalmente em telas muito estreitas.
-   Isso evita que os elementos "pulem" de posição de forma imprevisível
-   conforme a janela é redimensionada. */
+/* Layout fluido, sem breakpoints fixos em pixels: a marca fica à esquerda,
+   as ações do usuário à direita — ambas numa mesma linha, encolhendo e
+   quebrando texto conforme o espaço disponível. As abas (`.tabs`) têm
+   flex-basis 100%, o que faz o próprio motor de flexbox decidir, em
+   qualquer resolução/zoom, se elas cabem ao lado da marca+ações ou se
+   precisam da própria linha — sem depender de um valor de tela específico
+   que varia de monitor para monitor. Dentro das abas, os botões nunca
+   quebram entre si (nowrap + scroll horizontal), então nunca ficam
+   "espremidos" em duas fileiras dentro do mesmo pill. */
 .app-header {
   background: linear-gradient(90deg, var(--primary-dark), var(--primary));
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 28px;
-  gap: 14px 20px;
+  padding: clamp(12px, 2vw, 22px) clamp(16px, 3vw, 28px);
+  gap: 10px clamp(12px, 2vw, 20px);
   flex-wrap: wrap;
   position: sticky;
   top: 0;
   z-index: 1000;
 }
-.header-left { display: flex; align-items: center; gap: 16px; order: 1; flex-shrink: 0; }
+.header-left {
+  display: flex; align-items: center; gap: 16px;
+  order: 1; flex: 1 1 auto; min-width: 220px;
+}
 .brand-mark {
   background: #fff;
   padding: 6px;
@@ -75,14 +82,17 @@ button, input, select, textarea {
   object-fit: contain;
   flex-shrink: 0;
 }
-.brand-text { display: flex; flex-direction: column; gap: 4px; }
+.brand-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .brand-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .09em; opacity: .85; text-transform: uppercase; }
-.brand-text h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; }
+.brand-text h1 { font-size: clamp(16px, 1.6vw, 20px); margin: 0; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; }
 .brand-sub { font-size: 12px; opacity: .85; font-weight: 400; }
 
 .tabs {
+  /* flex-basis 100% garante linha própria sempre que não houver espaço —
+     de forma fluida, em qualquer largura, sem "if width < Xpx". */
+  order: 3; flex: 1 1 100%; min-width: 0;
   display: flex; gap: 4px; flex-wrap: nowrap; background: rgba(255,255,255,.14);
-  padding: 4px; border-radius: 999px; order: 2;
+  padding: 4px; border-radius: 999px;
   overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
 }
 .tabs::-webkit-scrollbar { display: none; }
@@ -103,7 +113,10 @@ button, input, select, textarea {
 .tab-btn:hover { opacity: 1; background: rgba(255,255,255,.12); }
 .tab-btn.active { background: #fff; color: var(--primary-dark); font-weight: 600; opacity: 1; }
 
-.header-right { display: flex; gap: 8px; order: 3; flex-shrink: 0; align-items: center; }
+.header-right {
+  display: flex; gap: 8px; order: 2; flex: 0 1 auto; flex-wrap: wrap;
+  align-items: center; justify-content: flex-end;
+}
 .btn-ghost {
   background: rgba(255,255,255,.16);
   border: 1px solid rgba(255,255,255,.3);
@@ -551,23 +564,11 @@ main { flex: 1; min-height: 0; }
 .leads-table td.check-col { overflow: visible; }
 
 /* ===================== RESPONSIVE ===================== */
-/* Abaixo de 1300px as abas (labels longos) não cabem mais ao lado da marca
-   e das ações — em vez de deixar o navegador decidir onde quebrar (o que
-   fazia os elementos "pularem" de lugar de forma imprevisível conforme o
-   tamanho da tela), forçamos as abas para sua própria linha, com rolagem
-   horizontal, e as ações do usuário para a linha seguinte. Isso é
-   determinístico em qualquer largura de tela. */
-@media (max-width: 1300px) {
-  .tabs { flex-basis: 100%; order: 3; justify-content: flex-start; }
-  .header-right { order: 2; margin-left: auto; }
-}
-@media (max-width: 640px) {
-  .app-header { padding: 14px 16px; gap: 10px 14px; }
-  .header-right { margin-left: 0; flex-wrap: wrap; }
-  .brand-text h1 { font-size: 17px; }
-  .brand-eyebrow { display: none; }
-}
-
+/* O header em si já é fluido por natureza (ver .app-header/.tabs acima) e
+   não depende de nenhum breakpoint — funciona em qualquer largura de tela
+   ou nível de zoom. Os ajustes abaixo cobrem o restante do layout
+   (filtros, sidebar, kanban), onde empilhar em coluna abaixo de uma certa
+   largura realmente faz sentido para a usabilidade. */
 @media (max-width: 900px) {
   .tab-panel.active { flex-direction: column; }
   .filters-bar { width: 100%; min-width: 0; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
