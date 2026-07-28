@@ -1100,7 +1100,12 @@ function refreshSidebarIfOpen() {
 
 function websiteLink(agencia) {
   if (!agencia.website) return '—';
-  return `<a href="${agencia.website}" target="_blank" rel="noopener noreferrer">${agencia.website.replace(/^https?:\/\//i, '')}</a>`;
+  // Em vez de imprimir a URL inteira (que pode ser bem longa e empurrar a
+  // largura do sidebar), mostramos um botão curto e fixo; a URL completa
+  // fica disponível no title (tooltip) e no href.
+  const url = agencia.website;
+  const displayUrl = url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+  return `<a class="website-link" href="${attrEscape(url)}" target="_blank" rel="noopener noreferrer" title="${attrEscape(displayUrl)}">🔗 Visitar site</a>`;
 }
 
 function openSidebar(id) {
