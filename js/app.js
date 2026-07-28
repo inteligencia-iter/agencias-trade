@@ -95,10 +95,6 @@ function setSyncStatus(status) {
 }
 
 function initFirebase() {
-  const badge = document.getElementById('project-badge');
-  if (badge && typeof FIREBASE_CONFIG !== 'undefined') {
-    badge.textContent = `🔥 ${FIREBASE_CONFIG.projectId}`;
-  }
   if (!firebaseConfigured || typeof firebase === 'undefined') {
     setSyncStatus('local');
     return;
@@ -360,6 +356,22 @@ const AGENCIAS = AGENCIAS_DATA; // vem de data/agencias.js
 const AGENCIAS_BY_ID = {};
 AGENCIAS.forEach(a => { AGENCIAS_BY_ID[a.id] = a; });
 
+// Alguns cadastros trazem um "Nome Fantasia" que na verdade é só um
+// placeholder sem sentido (ex.: "*", "**", ".", "N/D") em vez do nome
+// comercial real. Nesses casos exibimos a Razão Social no lugar, para não
+// mostrar "*" como se fosse o nome da agência.
+const PLACEHOLDER_FANTASIA_RE = /^[*.\-#]+$/;
+function displayName(agencia) {
+  const f = (agencia.fantasia || '').trim();
+  if (!f || PLACEHOLDER_FANTASIA_RE.test(f) || f.toUpperCase() === 'N/D' || f.toUpperCase() === 'ND') {
+    return agencia.razao;
+  }
+  return agencia.fantasia;
+}
+function attrEscape(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
 const ALL_REGIOES = Array.from(new Set(AGENCIAS.map(a => a.regiao))).sort();
 const ALL_CATEGORIAS = Array.from(new Set(AGENCIAS.map(a => a.categoria))).sort();
 const ALL_SEGMENTOS = Array.from(new Set(AGENCIAS.flatMap(a => a.segmentos))).sort();
@@ -521,16 +533,25 @@ function initMap() {
 
 const CLUSTER_COLOR = '#4C4F9E';
 
+// Ícones são apenas configuração (não têm estado próprio), então podem ser
+// reaproveitados entre marcadores da mesma cor/status — com até ~57 mil
+// agências, isso evita recriar dezenas de milhares de ícones idênticos a
+// cada renderização do mapa.
+const _iconCache = {};
 function markerIcon(color, contacted) {
+  const key = color + '|' + contacted;
+  if (_iconCache[key]) return _iconCache[key];
   const c = contacted ? CONTACTED_COLOR : color;
   const op = contacted ? 0.5 : 0.92;
-  return L.divIcon({
+  const icon = L.divIcon({
     className: '',
     html: `<div class="at-marker" style="opacity:${op};background:${c};width:9px;height:9px;"></div>`,
     iconSize: [9, 9],
     iconAnchor: [4, 4],
     popupAnchor: [0, -6],
   });
+  _iconCache[key] = icon;
+  return icon;
 }
 
 function colorFor(agencia) {
@@ -545,7 +566,7 @@ function popupHtml(agencia) {
     : `<div class="geo-note">📍 Localização aproximada (centróide do município)</div>`;
   return `
     <div class="school-popup" data-id="${agencia.id}">
-      <h4>${agencia.fantasia}</h4>
+      <h4>${displayName(agencia)}</h4>
       <div class="badges">${segBadges}</div>
       <div class="phone">📞 ${agencia.tel_com || agencia.tel_inst ? `<a href="tel:${agencia.tel_com || agencia.tel_inst}">${agencia.tel_com || agencia.tel_inst}</a>` : '<em>não informado</em>'}</div>
       ${geoNote}
@@ -568,20 +589,26 @@ function filteredMapa() {
 function renderMap() {
   clusterGroup.clearLayers();
   const list = filteredMapa();
+  const markers = [];
 
   list.forEach(a => {
     if (a.lat == null || a.lng == null) return;
     const st = getState(a.id);
     const color = colorFor(a);
     const marker = L.marker([a.lat, a.lng], { icon: markerIcon(color, st.contacted) });
-    marker.bindPopup(popupHtml(a));
+    // O conteúdo do popup só é montado quando ele é realmente aberto (função
+    // lazy), em vez de gerar o HTML das ~57 mil agências de uma vez.
+    marker.bindPopup(() => popupHtml(a));
     marker.on('popupopen', (e) => {
       const el = e.popup.getElement();
       const cb = el.querySelector('.popup-check');
       cb.addEventListener('change', () => markContacted(a.id, cb.checked));
     });
-    clusterGroup.addLayer(marker);
+    markers.push(marker);
   });
+  // addLayers (em lote) é bem mais rápido que addLayer chamado ~57 mil
+  // vezes, pois o clustering reindexa tudo de uma vez só.
+  clusterGroup.addLayers(markers);
 
   document.getElementById('mapa-stats').innerHTML = `<b>${list.length}</b> agências nesta visualização`;
   renderLegend(list);
@@ -631,19 +658,28 @@ function statusPill(agencia) {
   return '';
 }
 
+// Com até ~57 mil agências, montar uma linha de tabela por registro de uma
+// só vez trava a interface. Renderizamos só uma "página" por vez, com um
+// botão para carregar mais — a exportação em CSV continua exportando a
+// lista filtrada inteira, não só o que está visível na tela.
+const LEADS_PAGE_SIZE = 200;
+let leadsLimit = LEADS_PAGE_SIZE;
+
 function renderLeads() {
   const tbody = document.getElementById('leads-tbody');
   const list = filteredLeads();
+  const shown = list.slice(0, leadsLimit);
   tbody.innerHTML = '';
-  list.forEach(a => {
+  shown.forEach(a => {
     const st = getState(a.id);
     const tr = document.createElement('tr');
     if (st.contacted) tr.classList.add('contacted');
+    const name = displayName(a);
     tr.innerHTML = `
       <td class="check-col"><input type="checkbox" ${st.contacted ? 'checked' : ''} data-id="${a.id}" class="leads-check"></td>
-      <td>${a.fantasia}</td>
-      <td>${a.municipio}/${a.uf}</td>
-      <td>${a.categoria}</td>
+      <td title="${attrEscape(name)}">${name}</td>
+      <td title="${attrEscape(a.municipio + '/' + a.uf)}">${a.municipio}/${a.uf}</td>
+      <td title="${attrEscape(a.categoria)}">${a.categoria}</td>
       <td>${a.tel_com || a.tel_inst || '—'}</td>
       <td>${statusPill(a)}</td>
     `;
@@ -657,7 +693,25 @@ function renderLeads() {
     cb.addEventListener('click', (e) => e.stopPropagation());
     cb.addEventListener('change', () => markContacted(cb.dataset.id, cb.checked));
   });
-  document.getElementById('leads-stats').innerHTML = `<b>${list.length}</b> agências encontradas`;
+  if (list.length > shown.length) {
+    const tr = document.createElement('tr');
+    const restante = list.length - shown.length;
+    tr.innerHTML = `<td colspan="6" style="text-align:center;padding:16px;">
+      <button class="btn-export" id="leads-load-more">Carregar mais (${Math.min(LEADS_PAGE_SIZE, restante)} de ${restante} restantes)</button>
+    </td>`;
+    tbody.appendChild(tr);
+    tr.querySelector('#leads-load-more').addEventListener('click', () => {
+      leadsLimit += LEADS_PAGE_SIZE;
+      renderLeads();
+    });
+  }
+  const pagStats = list.length > shown.length ? ` (mostrando ${shown.length})` : '';
+  document.getElementById('leads-stats').innerHTML = `<b>${list.length}</b> agências encontradas${pagStats}`;
+}
+
+function resetLeadsAndRender() {
+  leadsLimit = LEADS_PAGE_SIZE;
+  renderLeads();
 }
 
 /* ==========================================================================
@@ -729,7 +783,7 @@ function kanbanCard(agencia, stage) {
   const hist = st.followup_history || [];
   const responsavel = st.last_updated_by ? ` · resp.: ${st.last_updated_by}` : '';
   card.innerHTML = `
-    <h5>${agencia.fantasia}</h5>
+    <h5>${displayName(agencia)}</h5>
     <div class="kc-meta">${agencia.municipio}/${agencia.uf} · ${agencia.tel_com || agencia.tel_inst || 'sem telefone'}${responsavel}</div>
     <div class="kc-actions">
       <select class="stage-move">
@@ -757,7 +811,7 @@ function kanbanCard(agencia, stage) {
   card.querySelector('.stage-move').addEventListener('change', (e) => {
     const val = e.target.value;
     if (!val) {
-      const ok = confirm(`Remover "${agencia.fantasia}" do funil de follow-up? Ela volta a aparecer como "Sem contato" no Mapa e em Leads.`);
+      const ok = confirm(`Remover "${displayName(agencia)}" do funil de follow-up? Ela volta a aparecer como "Sem contato" no Mapa e em Leads.`);
       if (ok) clearFollowup(agencia.id);
       else renderKanban();
     } else {
@@ -912,13 +966,14 @@ function renderRejeitadas() {
     const lastHist = hist.slice(-1)[0];
     const date = lastHist ? new Date(lastHist.ts).toLocaleString('pt-BR') : '—';
     const tr = document.createElement('tr');
+    const name = displayName(a);
     tr.innerHTML = `
-      <td>${a.fantasia}</td>
-      <td>${a.municipio}/${a.uf}</td>
+      <td title="${attrEscape(name)}">${name}</td>
+      <td title="${attrEscape(a.municipio + '/' + a.uf)}">${a.municipio}/${a.uf}</td>
       <td>${a.tel_com || a.tel_inst || '—'}</td>
-      <td>${etapaOrigem}</td>
-      <td>${st.rejection_category || '—'}</td>
-      <td>${st.rejection_notes || '—'}</td>
+      <td title="${attrEscape(etapaOrigem)}">${etapaOrigem}</td>
+      <td title="${attrEscape(st.rejection_category || '')}">${st.rejection_category || '—'}</td>
+      <td class="cell-wrap">${st.rejection_notes || '—'}</td>
       <td>${date}</td>
       <td><button class="btn-reactivate" data-id="${a.id}">Reativar</button></td>
     `;
@@ -952,12 +1007,13 @@ function renderCadastradas() {
     const lastHist = (st.followup_history || []).slice(-1)[0];
     const date = lastHist ? new Date(lastHist.ts).toLocaleString('pt-BR') : '—';
     const tr = document.createElement('tr');
+    const name = displayName(a);
     tr.innerHTML = `
-      <td>${a.fantasia}</td>
-      <td>${a.municipio}/${a.uf}</td>
+      <td title="${attrEscape(name)}">${name}</td>
+      <td title="${attrEscape(a.municipio + '/' + a.uf)}">${a.municipio}/${a.uf}</td>
       <td>${a.tel_com || a.tel_inst || '—'}</td>
-      <td>${a.responsavel || '—'}</td>
-      <td>${st.conclusion_notes || '—'}</td>
+      <td title="${attrEscape(a.responsavel || '')}">${a.responsavel || '—'}</td>
+      <td class="cell-wrap">${st.conclusion_notes || '—'}</td>
       <td>${date}</td>
       <td><button class="btn-reactivate" data-id="${a.id}">Reverter</button></td>
     `;
@@ -1021,7 +1077,7 @@ function openSidebar(id) {
   const segBadges = a.segmentos.map(s => `<span class="badge">${s}</span>`).join('') || '—';
 
   content.innerHTML = `
-    <h2>${a.fantasia}</h2>
+    <h2>${displayName(a)}</h2>
     <div class="muted-line">${a.razao} · CNPJ ${a.id}</div>
     <div class="muted-line">${a.municipio} / ${a.uf} · ${a.regiao}</div>
 
@@ -1117,6 +1173,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    currentTab = btn.dataset.tab;
+    if (typeof tabDirty !== 'undefined' && tabDirty[currentTab]) renderTab(currentTab);
     if (btn.dataset.tab === 'mapa' && map) setTimeout(() => map.invalidateSize(), 50);
   });
 });
@@ -1187,7 +1245,7 @@ function exportMapaCSV() {
   const rows = filteredMapa().map(a => {
     const st = getState(a.id);
     return [
-      a.id, a.fantasia, a.razao, a.municipio, a.uf, a.regiao, a.categoria,
+      a.id, displayName(a), a.razao, a.municipio, a.uf, a.regiao, a.categoria,
       a.segmentos.join(', '), a.tel_com || a.tel_inst || '—', a.endereco,
       a.lat != null ? String(a.lat).replace('.', ',') : '—',
       a.lng != null ? String(a.lng).replace('.', ',') : '—',
@@ -1206,7 +1264,7 @@ function exportLeadsCSV() {
   const rows = filteredLeads().map(a => {
     const st = getState(a.id);
     return [
-      a.id, a.fantasia, a.razao, a.municipio, a.uf, a.regiao, a.categoria,
+      a.id, displayName(a), a.razao, a.municipio, a.uf, a.regiao, a.categoria,
       a.segmentos.join(', '), a.tel_com || a.tel_inst || '—',
       st.contacted ? 'Sim' : 'Não', stageAtualLabel(a),
     ];
@@ -1225,7 +1283,7 @@ function exportFollowupCSV() {
     const first = hist.length > 0 ? new Date(hist[0].ts).toLocaleString('pt-BR') : '—';
     const lastUpdate = st.updated_at ? new Date(st.updated_at).toLocaleString('pt-BR') : '—';
     return [
-      a.id, a.fantasia, a.tel_com || a.tel_inst || '—', `${a.municipio}/${a.uf}`, stageAtualLabel(a),
+      a.id, displayName(a), a.tel_com || a.tel_inst || '—', `${a.municipio}/${a.uf}`, stageAtualLabel(a),
       st.last_updated_by || '—', first, lastUpdate,
       historyToCSVCell(hist), st.notes || '—',
     ];
@@ -1240,7 +1298,7 @@ function exportRejeitadasCSV() {
     const lastHist = (st.followup_history || []).slice(-1)[0];
     const date = lastHist ? new Date(lastHist.ts).toLocaleString('pt-BR') : '—';
     return [
-      a.id, a.fantasia, a.tel_com || a.tel_inst || '—', `${a.municipio}/${a.uf}`,
+      a.id, displayName(a), a.tel_com || a.tel_inst || '—', `${a.municipio}/${a.uf}`,
       st.rejection_category || '—', st.rejection_notes || '—', date, st.last_updated_by || '—',
     ];
   });
@@ -1254,7 +1312,7 @@ function exportCadastradasCSV() {
     const lastHist = (st.followup_history || []).slice(-1)[0];
     const date = lastHist ? new Date(lastHist.ts).toLocaleString('pt-BR') : '—';
     return [
-      a.id, a.fantasia, a.tel_com || a.tel_inst || '—', `${a.municipio}/${a.uf}`,
+      a.id, displayName(a), a.tel_com || a.tel_inst || '—', `${a.municipio}/${a.uf}`,
       a.responsavel || '—', st.conclusion_notes || '—', date,
     ];
   });
@@ -1271,13 +1329,40 @@ document.getElementById('btn-export-cadastradas').addEventListener('click', expo
    INIT
    ========================================================================== */
 
+// Renderizar as 5 abas inteiras (mapa com até ~57 mil marcadores, tabela de
+// leads, kanban, rejeitadas, cadastradas) a cada pequena mudança de estado
+// era o maior gargalo de performance do site. Agora só a aba atualmente
+// visível é re-renderizada na hora; as demais ficam marcadas como
+// "desatualizadas" (dirty) e só são realmente redesenhadas quando o
+// usuário clica nelas.
+let currentTab = 'mapa';
+const TAB_RENDERERS = {
+  mapa: renderMap,
+  leads: renderLeads,
+  followup: renderKanban,
+  cadastradas: renderCadastradas,
+  rejeitadas: renderRejeitadas,
+};
+const tabDirty = { mapa: true, leads: true, followup: true, cadastradas: true, rejeitadas: true };
+
+function renderTab(tab) {
+  if (!TAB_RENDERERS[tab]) return;
+  TAB_RENDERERS[tab]();
+  tabDirty[tab] = false;
+}
+
 function refreshAll() {
-  renderMap();
-  renderLeads();
-  renderKanban();
-  renderRejeitadas();
-  renderCadastradas();
+  Object.keys(tabDirty).forEach(t => { tabDirty[t] = true; });
+  renderTab(currentTab);
   refreshSidebarIfOpen();
+}
+
+function debounce(fn, wait) {
+  let t;
+  return function (...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
 }
 
 function populateCategoriaSelects() {
@@ -1296,22 +1381,23 @@ function init() {
   initFirebase();
   initMap();
   buildMultiselect('segmento-filter-mapa', selectedSegmentosMapa, renderMap);
-  buildMultiselect('segmento-filter-leads', selectedSegmentosLeads, renderLeads);
+  buildMultiselect('segmento-filter-leads', selectedSegmentosLeads, resetLeadsAndRender);
   populateCategoriaSelects();
   mapaCascade = setupLocationCascade('mapa', renderMap);
-  leadsCascade = setupLocationCascade('leads', renderLeads);
+  leadsCascade = setupLocationCascade('leads', resetLeadsAndRender);
 
   document.getElementById('legend-toggle').addEventListener('click', () => {
     document.getElementById('map-legend').classList.toggle('open');
   });
   document.getElementById('filter-categoria-mapa').addEventListener('change', renderMap);
   document.getElementById('contacted-filter-mapa').addEventListener('change', renderMap);
-  document.getElementById('filter-categoria-leads').addEventListener('change', renderLeads);
-  document.getElementById('contacted-filter-leads').addEventListener('change', renderLeads);
-  document.getElementById('search-leads').addEventListener('input', renderLeads);
-  document.getElementById('search-followup').addEventListener('input', renderKanban);
+  document.getElementById('filter-categoria-leads').addEventListener('change', resetLeadsAndRender);
+  document.getElementById('contacted-filter-leads').addEventListener('change', resetLeadsAndRender);
+  document.getElementById('search-leads').addEventListener('input', debounce(resetLeadsAndRender, 200));
+  document.getElementById('search-followup').addEventListener('input', debounce(renderKanban, 200));
 
-  refreshAll();
+  // A aba inicial (Mapa) é renderizada de cara; as outras só quando visitadas.
+  renderTab(currentTab);
 }
 
 init();
