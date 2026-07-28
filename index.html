@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor - Agências de Turismo</title>
+<link rel="icon" type="image/x-icon" href="https://iter.com.br/favicon.ico">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-left">
+    <img class="brand-mark" src="https://iter.com.br/favicon.ico" alt="Grupo Iter" width="48" height="48">
+    <div class="brand-text">
+      <span class="brand-eyebrow">GRUPO ITER · INTELIGÊNCIA DE MERCADO</span>
+      <h1>Agências de Turismo</h1>
+      <span class="brand-sub">Monitor de Agências - Brasil</span>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="mapa">Mapa</button>
+    <button class="tab-btn" data-tab="leads">Leads</button>
+    <button class="tab-btn" data-tab="followup">Follow Up</button>
+    <button class="tab-btn" data-tab="cadastradas">Agências Cadastradas</button>
+    <button class="tab-btn" data-tab="rejeitadas">Agência Rejeitada / Sem Resposta</button>
+  </nav>
+  <div class="header-right">
+    <button id="current-user-badge" class="user-badge" title="Clique para trocar de usuário"></button>
+    <span class="sync-status" id="sync-status" title="Status de sincronização">● local</span>
+    <span class="user-badge" id="project-badge" title="Projeto Firebase conectado"></span>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ===================== MAPA ===================== -->
+  <section class="tab-panel active" id="panel-mapa">
+    <aside class="filters-bar">
+      <div class="filter-group">
+        <label>Região</label>
+        <select id="filter-regiao-mapa"><option value="">Todas</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Estado (UF)</label>
+        <select id="filter-uf-mapa"><option value="">Todos</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Município</label>
+        <select id="filter-municipio-mapa"><option value="">Todos</option></select>
+      </div>
+
+      <div class="filter-group">
+        <label>Categoria de Atuação</label>
+        <select id="filter-categoria-mapa"><option value="">Todas</option></select>
+      </div>
+
+      <div class="filter-group">
+        <label>Segmentos Turísticos</label>
+        <div class="multiselect" id="segmento-filter-mapa">
+          <button class="multiselect-toggle">Todos os segmentos ▾</button>
+          <div class="multiselect-panel"></div>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label>Agências contactadas</label>
+        <select id="contacted-filter-mapa">
+          <option value="todas">Mostrar todas</option>
+          <option value="somente">Mostrar contactadas</option>
+          <option value="ocultar">Ocultar contactadas</option>
+        </select>
+      </div>
+
+      <div class="filter-group stats" id="mapa-stats"></div>
+
+      <div class="filter-group filter-export">
+        <button id="btn-export-mapa" class="btn-export" title="Exportar em CSV as agências visíveis nesta visualização">⬇ Exportar CSV</button>
+      </div>
+    </aside>
+
+    <div class="map-wrap">
+      <div id="map"></div>
+      <button class="legend-toggle" id="legend-toggle" title="Mostrar/ocultar legenda">Legenda</button>
+      <div class="map-legend" id="map-legend"></div>
+    </div>
+  </section>
+
+  <!-- ===================== LEADS ===================== -->
+  <section class="tab-panel" id="panel-leads">
+    <aside class="filters-bar">
+      <div class="filter-group">
+        <label>Buscar agência</label>
+        <input type="text" id="search-leads" placeholder="Razão social ou nome fantasia...">
+      </div>
+
+      <div class="filter-group">
+        <label>Região</label>
+        <select id="filter-regiao-leads"><option value="">Todas</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Estado (UF)</label>
+        <select id="filter-uf-leads"><option value="">Todos</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Município</label>
+        <select id="filter-municipio-leads"><option value="">Todos</option></select>
+      </div>
+
+      <div class="filter-group">
+        <label>Categoria de Atuação</label>
+        <select id="filter-categoria-leads"><option value="">Todas</option></select>
+      </div>
+
+      <div class="filter-group">
+        <label>Segmentos Turísticos</label>
+        <div class="multiselect" id="segmento-filter-leads">
+          <button class="multiselect-toggle">Todos os segmentos ▾</button>
+          <div class="multiselect-panel"></div>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label>Agências contactadas</label>
+        <select id="contacted-filter-leads">
+          <option value="todas">Mostrar todas</option>
+          <option value="somente">Mostrar contactadas</option>
+          <option value="ocultar">Ocultar contactadas</option>
+        </select>
+      </div>
+
+      <div class="filter-group stats" id="leads-stats"></div>
+
+      <div class="filter-group filter-export">
+        <button id="btn-export-leads" class="btn-export" title="Exportar em CSV as agências visíveis nesta lista">⬇ Exportar CSV</button>
+      </div>
+    </aside>
+
+    <div class="leads-list-wrap">
+      <table class="leads-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Agência</th>
+            <th>Município/UF</th>
+            <th>Categoria</th>
+            <th>Telefone</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="leads-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== FOLLOW UP ===================== -->
+  <section class="tab-panel" id="panel-followup">
+    <div class="followup-header">
+      <p>Agências entram aqui automaticamente assim que forem marcadas como <strong>contactadas</strong> no Mapa ou em Leads. Arraste o card para a próxima etapa, ou use o menu de ações.</p>
+      <div class="followup-search">
+        <input type="text" id="search-followup" placeholder="Buscar agência no funil...">
+      </div>
+      <button id="btn-export-followup" class="btn-export" title="Exportar em CSV o funil de follow-up">⬇ Exportar CSV</button>
+    </div>
+    <div class="kanban" id="kanban-board"></div>
+  </section>
+
+  <!-- ===================== AGÊNCIAS CADASTRADAS ===================== -->
+  <section class="tab-panel" id="panel-cadastradas">
+    <div class="concluidos-header">
+      <p>Agências com cadastro concluído com sucesso na plataforma.</p>
+      <button id="btn-export-cadastradas" class="btn-export" title="Exportar em CSV as agências cadastradas">⬇ Exportar CSV</button>
+    </div>
+    <table class="leads-table">
+      <thead>
+        <tr>
+          <th>Agência</th>
+          <th>Município/UF</th>
+          <th>Telefone</th>
+          <th>Responsável</th>
+          <th>Observações</th>
+          <th>Data de Conclusão</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="cadastradas-tbody"></tbody>
+    </table>
+  </section>
+
+  <!-- ===================== REJEITADAS / SEM RESPOSTA ===================== -->
+  <section class="tab-panel" id="panel-rejeitadas">
+    <div class="rejeitados-header">
+      <p>Agências que não responderam ou saíram do funil em algum ponto. Você pode reativar uma agência para reiniciar o follow-up.</p>
+      <button id="btn-export-rejeitadas" class="btn-export" title="Exportar em CSV as agências rejeitadas/sem resposta">⬇ Exportar CSV</button>
+    </div>
+    <table class="leads-table">
+      <thead>
+        <tr>
+          <th>Agência</th>
+          <th>Município/UF</th>
+          <th>Telefone</th>
+          <th>Etapa em que saiu</th>
+          <th>Motivo</th>
+          <th>Observações</th>
+          <th>Data</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="rejeitadas-tbody"></tbody>
+    </table>
+  </section>
+
+</main>
+
+<!-- ===================== SIDEBAR DE DETALHES ===================== -->
+<div class="sidebar-overlay" id="sidebar-overlay">
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-close" id="sidebar-close">✕</button>
+    <div id="sidebar-content"></div>
+  </aside>
+</div>
+
+<!-- ===================== MODAL: IDENTIFICAÇÃO DO USUÁRIO ===================== -->
+<div class="name-modal-overlay" id="name-modal-overlay">
+  <div class="name-modal">
+    <h3>Antes de começar</h3>
+    <p>Quem é você? Isso aparece no histórico de follow-up de cada agência, pra saber quem fez cada contato.</p>
+    <select id="name-modal-select">
+      <option value="">Selecione seu nome...</option>
+    </select>
+    <input type="text" id="name-modal-input" placeholder="Digite seu nome" maxlength="40" hidden>
+    <div class="name-modal-actions">
+      <button class="btn-ghost-light" id="name-modal-skip" hidden>Cancelar</button>
+      <button class="btn-primary" id="name-modal-confirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: REJEITAR / SEM RESPOSTA ===================== -->
+<div class="name-modal-overlay" id="reject-modal-overlay">
+  <div class="name-modal">
+    <h3>Marcar agência como rejeitada / sem resposta</h3>
+    <div id="reject-reason-field">
+      <label class="modal-field-label" for="reject-reason-select">Motivo</label>
+      <select id="reject-reason-select">
+        <option value="">Selecione o motivo...</option>
+      </select>
+    </div>
+    <div id="reject-reason-auto" hidden>
+      <label class="modal-field-label">Motivo (automático — etapa em que a agência estava)</label>
+      <div class="info-value" id="reject-reason-auto-text" style="margin-bottom:16px;"></div>
+    </div>
+    <textarea id="reject-notes-input" placeholder="Observações (opcional)..."></textarea>
+    <div class="name-modal-actions">
+      <button class="btn-ghost-light" id="reject-modal-cancel">Cancelar</button>
+      <button class="btn-primary" id="reject-modal-confirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: MARCAR COMO CADASTRADA (CONCLUIR) ===================== -->
+<div class="name-modal-overlay" id="complete-modal-overlay">
+  <div class="name-modal">
+    <h3>Concluir cadastro</h3>
+    <p>A agência será movida para a aba "Agências Cadastradas".</p>
+    <textarea id="complete-notes-input" placeholder="Observações (opcional)..."></textarea>
+    <div class="name-modal-actions">
+      <button class="btn-ghost-light" id="complete-modal-cancel">Cancelar</button>
+      <button class="btn-primary" id="complete-modal-confirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/team-config.js"></script>
+<script src="data/agencias_part1.js"></script>
+<script src="data/agencias_part2.js"></script>
+<script src="data/agencias_part3.js"></script>
+<script src="data/agencias_part4.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
