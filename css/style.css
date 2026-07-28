@@ -393,8 +393,8 @@ main { flex: 1; min-height: 0; }
 }
 .sidebar-overlay.open { display: flex; }
 .sidebar {
-  width: 560px; max-width: 92vw; background: #fff; height: 100%;
-  overflow-y: auto; padding: 36px; position: relative; box-shadow: -10px 0 30px rgba(0,0,0,.1);
+  width: 680px; max-width: 92vw; background: #fff; height: 100%;
+  overflow-y: auto; padding: 40px; position: relative; box-shadow: -10px 0 30px rgba(0,0,0,.1);
 }
 .sidebar-close {
   position: absolute; top: 20px; right: 20px; border: none; background: var(--bg);
@@ -407,6 +407,15 @@ main { flex: 1; min-height: 0; }
 .sidebar .info-grid .full { grid-column: 1 / -1; }
 .sidebar .info-label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
 .sidebar .info-value { font-size: 13px; margin-top: 3px; line-height: 1.4; }
+/* Botão curto e de largura fixa para o website — evita que uma URL longa
+   force a largura da coluna/sidebar. A URL completa aparece no tooltip. */
+.website-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--primary-light); color: var(--primary-dark); text-decoration: none;
+  font-size: 12px; font-weight: 600; padding: 6px 13px; border-radius: 999px;
+  white-space: nowrap; transition: background .15s;
+}
+.website-link:hover { background: var(--primary-softer); }
 .sidebar hr { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
 .sidebar textarea {
   width: 100%; min-height: 74px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px;
