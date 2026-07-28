@@ -35,27 +35,36 @@ html, body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
 }
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
 
 button, input, select, textarea {
   font-family: 'Stolzl', sans-serif;
 }
 
 /* ===================== HEADER ===================== */
+/* Layout previsível em 3 tiers: (1) tudo em 1 linha quando cabe;
+   (2) marca+ações numa linha e as abas em linha própria (rolável) quando
+   o espaço aperta; (3) empilhado verticalmente em telas muito estreitas.
+   Isso evita que os elementos "pulem" de posição de forma imprevisível
+   conforme a janela é redimensionada. */
 .app-header {
   background: linear-gradient(90deg, var(--primary-dark), var(--primary));
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 22px 28px;
-  gap: 20px;
+  padding: 16px 28px;
+  gap: 14px 20px;
   flex-wrap: wrap;
   position: sticky;
   top: 0;
   z-index: 1000;
-  min-height: 92px;
 }
-.header-left { display: flex; align-items: center; gap: 16px; }
+.header-left { display: flex; align-items: center; gap: 16px; order: 1; flex-shrink: 0; }
 .brand-mark {
   background: #fff;
   padding: 6px;
@@ -64,13 +73,19 @@ button, input, select, textarea {
   box-shadow: var(--shadow-sm);
   display: block;
   object-fit: contain;
+  flex-shrink: 0;
 }
 .brand-text { display: flex; flex-direction: column; gap: 4px; }
 .brand-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .09em; opacity: .85; text-transform: uppercase; }
 .brand-text h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; }
 .brand-sub { font-size: 12px; opacity: .85; font-weight: 400; }
 
-.tabs { display: flex; gap: 4px; flex-wrap: wrap; background: rgba(255,255,255,.14); padding: 4px; border-radius: 999px; }
+.tabs {
+  display: flex; gap: 4px; flex-wrap: nowrap; background: rgba(255,255,255,.14);
+  padding: 4px; border-radius: 999px; order: 2;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
 .tab-btn {
   background: transparent;
   border: none;
@@ -81,12 +96,14 @@ button, input, select, textarea {
   font-size: 12.5px;
   font-weight: 500;
   opacity: .85;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: background .15s, opacity .15s;
 }
 .tab-btn:hover { opacity: 1; background: rgba(255,255,255,.12); }
 .tab-btn.active { background: #fff; color: var(--primary-dark); font-weight: 600; opacity: 1; }
 
-.header-right { display: flex; gap: 8px; }
+.header-right { display: flex; gap: 8px; order: 3; flex-shrink: 0; align-items: center; }
 .btn-ghost {
   background: rgba(255,255,255,.16);
   border: 1px solid rgba(255,255,255,.3);
@@ -167,7 +184,7 @@ button, input, select, textarea {
 }
 
 /* ===================== LAYOUT ===================== */
-main { height: calc(100vh - 92px); }
+main { flex: 1; min-height: 0; }
 .tab-panel { display: none; height: 100%; }
 .tab-panel.active { display: flex; }
 
@@ -403,10 +420,17 @@ main { height: calc(100vh - 92px); }
 .followup-header p { font-size: 13px; color: var(--muted); max-width: 620px; margin: 0; line-height: 1.5; }
 .followup-search input { padding: 9px 14px; border: 1px solid var(--border); border-radius: 999px; font-size: 13px; width: 230px; background: #fff; }
 
-.kanban { flex: 1; display: flex; gap: 16px; overflow-x: auto; padding-bottom: 12px; }
+/* Grid ao invés de fileira horizontal infinita: com 8 etapas no funil de
+   agências, uma fileira só cresceria indefinidamente para a direita. Aqui
+   as colunas quebram para a linha de baixo assim que não cabem mais na
+   largura disponível. */
+.kanban {
+  flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px; align-content: start; overflow-y: auto; padding-bottom: 12px;
+}
 .kanban-col {
-  background: transparent; border-radius: var(--radius); min-width: 265px; max-width: 285px;
-  display: flex; flex-direction: column; flex-shrink: 0;
+  background: transparent; border-radius: var(--radius);
+  display: flex; flex-direction: column; max-height: 62vh;
 }
 .kanban-col-header {
   padding: 6px 6px 14px; font-weight: 600; font-size: 12.5px;
@@ -469,29 +493,59 @@ main { height: calc(100vh - 92px); }
 .kanban-card .kc-history .history-item strong { color: var(--ink); font-weight: 600; }
 .kanban-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 30px 10px; }
 
-/* ===================== REJEITADOS ===================== */
-#panel-rejeitados { flex-direction: column; padding: 24px 28px; overflow-y: auto; background: var(--bg); }
-.rejeitados-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 4px; }
+/* ===================== REJEITADAS / SEM RESPOSTA ===================== */
+#panel-rejeitadas { flex-direction: column; padding: 24px 28px; overflow: hidden; background: var(--bg); }
+.rejeitados-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 4px; flex-shrink: 0; }
 .rejeitados-header p { font-size: 13px; color: var(--muted); margin: 0 0 16px; max-width: 620px; line-height: 1.5; }
 .btn-reactivate {
   background: #fff; color: var(--primary-dark); border: 1px solid var(--primary-softer); padding: 6px 12px; border-radius: 999px;
   font-size: 11px; cursor: pointer; font-weight: 600;
 }
 .btn-reactivate:hover { background: var(--primary-light); }
-#panel-rejeitados .leads-table, #panel-concluidos .leads-table { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
+#panel-rejeitadas .table-scroll, #panel-cadastradas .table-scroll {
+  flex: 1; overflow: auto; border-radius: var(--radius); box-shadow: var(--shadow-sm); background: #fff;
+}
+#panel-rejeitadas .leads-table, #panel-cadastradas .leads-table { margin: 0; }
 
-/* ===================== CONCLUÍDOS ===================== */
-#panel-concluidos { flex-direction: column; padding: 24px 28px; overflow-y: auto; background: var(--bg); }
-.concluidos-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 4px; }
+/* ===================== AGÊNCIAS CADASTRADAS ===================== */
+#panel-cadastradas { flex-direction: column; padding: 24px 28px; overflow: hidden; background: var(--bg); }
+.concluidos-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 4px; flex-shrink: 0; }
 .concluidos-header p { font-size: 13px; color: var(--muted); margin: 0 0 16px; max-width: 620px; line-height: 1.5; }
 
+/* ===================== TABELAS: LARGURA DE COLUNAS ===================== */
+/* table-layout fixed + colgroup evita que um nome de agência (ou razão
+   social) muito longo empurre as demais colunas para fora da tela — o
+   texto é truncado com reticências (title mostra o texto completo). */
+.leads-table { table-layout: fixed; }
+.leads-table td {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.leads-table td.cell-wrap { white-space: normal; overflow: visible; text-overflow: clip; word-break: break-word; }
+.leads-table td.check-col { overflow: visible; }
+
 /* ===================== RESPONSIVE ===================== */
+/* Abaixo de 1300px as abas (labels longos) não cabem mais ao lado da marca
+   e das ações — em vez de deixar o navegador decidir onde quebrar (o que
+   fazia os elementos "pularem" de lugar de forma imprevisível conforme o
+   tamanho da tela), forçamos as abas para sua própria linha, com rolagem
+   horizontal, e as ações do usuário para a linha seguinte. Isso é
+   determinístico em qualquer largura de tela. */
+@media (max-width: 1300px) {
+  .tabs { flex-basis: 100%; order: 3; justify-content: flex-start; }
+  .header-right { order: 2; margin-left: auto; }
+}
+@media (max-width: 640px) {
+  .app-header { padding: 14px 16px; gap: 10px 14px; }
+  .header-right { margin-left: 0; flex-wrap: wrap; }
+  .brand-text h1 { font-size: 17px; }
+  .brand-eyebrow { display: none; }
+}
+
 @media (max-width: 900px) {
   .tab-panel.active { flex-direction: column; }
   .filters-bar { width: 100%; min-width: 0; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
   .filter-group { flex: 1; min-width: 140px; }
   .filter-group.stats { margin-top: 0; border-top: none; }
   .sidebar { width: 100%; max-width: 100%; }
-  .app-header { flex-direction: column; align-items: flex-start; }
-  .kanban-col { min-width: 230px; }
+  .kanban { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
 }
