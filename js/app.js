@@ -446,7 +446,11 @@ function matchesSegmentos(agencia, selectedSet) {
 function setupLocationCascade(prefix, onChange) {
   const regiaoSel = document.getElementById(`filter-regiao-${prefix}`);
   const ufSel = document.getElementById(`filter-uf-${prefix}`);
-  const muniSel = document.getElementById(`filter-municipio-${prefix}`);
+  const muniContainer = document.getElementById(`municipio-filter-${prefix}`);
+  const muniToggle = muniContainer.querySelector('.multiselect-toggle');
+  const muniSearch = muniContainer.querySelector('.multiselect-search');
+  const muniOptions = muniContainer.querySelector('.multiselect-options');
+  const selectedMunicipios = new Set();
 
   ALL_REGIOES.forEach(r => {
     const o = document.createElement('option'); o.value = r; o.textContent = r; regiaoSel.appendChild(o);
@@ -466,31 +470,82 @@ function setupLocationCascade(prefix, onChange) {
     ufSel.value = ufs.includes(keep) ? keep : '';
   }
 
-  function repopulateMunicipio() {
-    const uf = ufSel.value;
-    muniSel.innerHTML = '<option value="">Todos</option>';
-    if (!uf) { muniSel.disabled = true; return; }
-    muniSel.disabled = false;
-    (UF_TO_MUNICIPIOS[uf] || []).forEach(m => {
-      const o = document.createElement('option'); o.value = m; o.textContent = m; muniSel.appendChild(o);
-    });
+  function updateMuniToggleLabel() {
+    if (selectedMunicipios.size === 0) {
+      muniToggle.textContent = ufSel.value ? 'Todos os municípios ▾' : 'Selecione um Estado (UF) primeiro';
+    } else if (selectedMunicipios.size === 1) {
+      muniToggle.textContent = [...selectedMunicipios][0] + ' ▾';
+    } else {
+      muniToggle.textContent = selectedMunicipios.size + ' municípios selecionados ▾';
+    }
   }
 
-  muniSel.disabled = true;
+  // Município depende do Estado (UF) selecionado — a lista de opções (e a
+  // seleção atual) é reconstruída toda vez que o Estado muda. Permite
+  // selecionar vários municípios ao mesmo tempo (ex.: Gramado + Canela na
+  // Serra Gaúcha), com um campo de busca porque alguns estados têm
+  // centenas de municípios.
+  function repopulateMunicipio() {
+    const uf = ufSel.value;
+    selectedMunicipios.clear();
+    muniOptions.innerHTML = '';
+    muniSearch.value = '';
+    if (!uf) {
+      muniContainer.classList.add('disabled');
+      muniContainer.classList.remove('open');
+      updateMuniToggleLabel();
+      return;
+    }
+    muniContainer.classList.remove('disabled');
+    (UF_TO_MUNICIPIOS[uf] || []).forEach(m => {
+      const label = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = m;
+      cb.addEventListener('change', () => {
+        if (cb.checked) selectedMunicipios.add(m); else selectedMunicipios.delete(m);
+        updateMuniToggleLabel();
+        onChange();
+      });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(m));
+      muniOptions.appendChild(label);
+    });
+    updateMuniToggleLabel();
+  }
+
+  muniContainer.classList.add('disabled');
 
   regiaoSel.addEventListener('change', () => { repopulateUf(); repopulateMunicipio(); onChange(); });
   ufSel.addEventListener('change', () => { repopulateMunicipio(); onChange(); });
-  muniSel.addEventListener('change', onChange);
+
+  muniToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (muniContainer.classList.contains('disabled')) return;
+    document.querySelectorAll('.multiselect.open').forEach(el => { if (el !== muniContainer) el.classList.remove('open'); });
+    muniContainer.classList.toggle('open');
+    if (muniContainer.classList.contains('open')) muniSearch.focus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!muniContainer.contains(e.target)) muniContainer.classList.remove('open');
+  });
+  muniSearch.addEventListener('click', (e) => e.stopPropagation());
+  muniSearch.addEventListener('input', () => {
+    const term = muniSearch.value.trim().toLowerCase();
+    muniOptions.querySelectorAll('label').forEach(label => {
+      label.style.display = label.textContent.toLowerCase().includes(term) ? '' : 'none';
+    });
+  });
 
   return {
     get regiao() { return regiaoSel.value; },
     get uf() { return ufSel.value; },
-    get municipio() { return muniSel.value; },
+    municipios: selectedMunicipios,
   };
 }
 
 function matchesLocation(agencia, cascade) {
-  if (cascade.municipio && agencia.municipio !== cascade.municipio) return false;
+  if (cascade.municipios && cascade.municipios.size > 0 && !cascade.municipios.has(agencia.municipio)) return false;
   if (cascade.uf && agencia.uf !== cascade.uf) return false;
   if (cascade.regiao && agencia.regiao !== cascade.regiao) return false;
   return true;
